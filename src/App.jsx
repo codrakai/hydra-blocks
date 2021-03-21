@@ -6,14 +6,14 @@ import "./App.css";
 
 import { v4 as uuid } from "uuid";
 
-import { useFrame, useThree } from "react-three-fiber";
+import { render, useFrame, useResource, useThree } from "react-three-fiber";
 import {
   VRCanvas,
   DefaultXRControllers,
   Interactive,
   useXR,
 } from "@react-three/xr";
-import { Color, Vector3 } from "three";
+import { Color, CubeTexture, Vector3 } from "three";
 
 /*
 design notes
@@ -35,6 +35,20 @@ how to eval to string
   stringify from head
 */
 
+// HTML stuff
+const canvasDim = 256;
+const canvasSource = document.getElementById("source");
+canvasSource.width = canvasDim;
+canvasSource.height = canvasDim;
+
+// Hydra stuff
+var hydra = new Hydra({
+  canvas: canvasSource,
+  autoLoop: false,
+  precision: "mediump",
+});
+
+// Data stuff
 const blockTemplates = {
   osc: {
     type: "src",
@@ -216,8 +230,6 @@ const createMoveHandler = (scene) => (blockDataId, blockThreeId) => {
 
   if (!overlapped) return;
 
-  debugger;
-
   const { blocks } = useStore.getState();
 
   const droppedData = blocks[blockDataId];
@@ -284,21 +296,50 @@ const buildChainFrom = (o) => {
 
 const renderValidChains = () => {
   let renderString = "";
+  const renderOuts = [];
   Object.values(outputs).forEach((o) => {
     if (hasValidChain(o)) {
       console.log(`${o.id} has a valid render chain`);
       renderString = buildChainFrom(o);
+      renderOuts.push(o.id);
     }
   });
   console.log(renderString);
+
+  eval(renderString);
+
+  switch (renderOuts.length) {
+    case 0:
+      return;
+    case 1:
+      const renderString = `window.render(${renderOuts[0]})`;
+      eval(renderString);
+      break;
+    default:
+      window.render();
+      break;
+  }
 };
 
 function Scene() {
+  useFrame((_, delta) => {
+    hydra.tick(delta * 1000);
+    sourceTexture.current.needsUpdate = true;
+  });
+
   const { scene } = useThree();
+  const { blocks } = useStore();
+
+  const sourceTexture = useResource();
 
   const moveHandler = useMemo(() => createMoveHandler(scene), [scene]);
 
-  const { blocks } = useStore();
+  useEffect(() => {
+    if (!scene) return;
+    if (!sourceTexture.current) return;
+
+    scene.background = sourceTexture.current;
+  }, [scene, sourceTexture]);
 
   console.log(blocks);
 
@@ -307,6 +348,18 @@ function Scene() {
       <DefaultXRControllers />
 
       <directionalLight position={new Vector3(2, 3, 1)} />
+
+      <cubeTexture
+        ref={sourceTexture}
+        images={[
+          canvasSource,
+          canvasSource,
+          canvasSource,
+          canvasSource,
+          canvasSource,
+          canvasSource,
+        ]}
+      />
 
       {Object.values(blocks).map((block) => {
         return (
