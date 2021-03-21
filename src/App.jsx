@@ -6,14 +6,15 @@ import "./App.css";
 
 import { v4 as uuid } from "uuid";
 
-import { render, useFrame, useResource, useThree } from "react-three-fiber";
+import { useFrame, useResource, useThree } from "react-three-fiber";
 import {
   VRCanvas,
   DefaultXRControllers,
   Interactive,
   useXR,
 } from "@react-three/xr";
-import { Color, CubeTexture, Vector3 } from "three";
+import { Text } from "@react-three/drei";
+import { Color, Vector3 } from "three";
 
 /*
 design notes
@@ -129,7 +130,7 @@ const useStore = create((set, get) => ({
 useStore.getState().addBlock("osc", { createPosition: new Vector3(0, 1, -5) });
 useStore.getState().addBlock("diff", { createPosition: new Vector3(2, 1, -5) });
 
-function Block({ id, position, moveHandler, color }) {
+function Block({ id, type, position, moveHandler, color }) {
   const [moveState, setMoveState] = useState(undefined);
   const [currentController, setCurrentController] = useState(undefined);
   const ref = useRef();
@@ -177,29 +178,42 @@ function Block({ id, position, moveHandler, color }) {
   console.log(`rendering ${id}`);
 
   return (
-    <Interactive
-      onSqueezeStart={(e) => {
-        console.log(e);
-        setMoveState({
-          controller: e.controller.controller.uuid,
-          offset: ref.current.position
-            .clone()
-            .sub(e.controller.controller.position),
-          initialRotation: e.controller.controller.quaternion,
-        });
-      }}
-      onSqueezeEnd={() => {
-        console.log("squozend");
-        setMoveState(undefined);
-      }}
-      onHover={() => console.log("hover")}
-      onBlur={() => console.log("blur")}
-    >
-      <mesh ref={ref} position={position}>
-        <boxGeometry></boxGeometry>
-        <meshStandardMaterial color={color}></meshStandardMaterial>
-      </mesh>
-    </Interactive>
+    <group ref={ref} position={position}>
+      <Text
+        color={"#EC2D2D"}
+        fontSize={0.25}
+        maxWidth={200}
+        lineHeight={1}
+        letterSpacing={0.02}
+        position={new Vector3(0, 0.25, 1)}
+      >
+        {type}
+      </Text>
+
+      <Interactive
+        onSqueezeStart={(e) => {
+          console.log(e);
+          setMoveState({
+            controller: e.controller.controller.uuid,
+            offset: ref.current.position
+              .clone()
+              .sub(e.controller.controller.position),
+            initialRotation: e.controller.controller.quaternion,
+          });
+        }}
+        onSqueezeEnd={() => {
+          console.log("squozend");
+          setMoveState(undefined);
+        }}
+        onHover={() => console.log("hover")}
+        onBlur={() => console.log("blur")}
+      >
+        <mesh>
+          <boxGeometry></boxGeometry>
+          <meshStandardMaterial color={color}></meshStandardMaterial>
+        </mesh>
+      </Interactive>
+    </group>
   );
 }
 
@@ -366,6 +380,7 @@ function Scene() {
           <Block
             key={block.id}
             id={block.id}
+            type={block.template}
             position={block.position}
             color={block.color}
             moveHandler={moveHandler}
